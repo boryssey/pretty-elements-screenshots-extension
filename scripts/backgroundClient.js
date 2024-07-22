@@ -1,72 +1,71 @@
-self.$RefreshReg$ = () => {};
-self.$RefreshSig$ = () => () => {};
-const querystring = require('querystring');
+/* eslint-disable @typescript-eslint/no-var-requires */
+const querystring = require("querystring");
 
-const logger = msg => {
+const logger = (msg) => {
   console.log(`[BGC] ${msg}`);
 };
 
-logger('background client up.');
+logger("background client up.");
 
-logger('connecting to SSE service...');
-console.log(__resourceQuery, '__resourceQuery')
+logger("connecting to SSE service...");
+// eslint-disable-next-line no-undef
 const port = querystring.parse(__resourceQuery.slice(1)).port;
 const es = new EventSource(`http://localhost:${port}/__server_sent_events__`);
 
 es.addEventListener(
-  'open',
+  "open",
   () => {
-    logger('SSE service connected!');
+    logger("SSE service connected!");
   },
-  false
+  false,
 );
 
 es.addEventListener(
-  'error',
-  event => {
+  "error",
+  (event) => {
     if (event.target.readyState === 0) {
-      console.error('[BGC] you need to open devServer first!');
+      console.error("[BGC] you need to open devServer first!");
     } else {
       console.error(event);
     }
   },
-  false
+  false,
 );
 
-es.addEventListener('background-updated', () => {
+es.addEventListener("background-updated", () => {
   logger("received 'background-updated' event from SSE service.");
-  logger('extension will reload to reload background...');
-  setTimeout(() => {
-    // chrome.runtime.reload(); 
-  }, 5000)
+  logger("extension will reload to reload background...");
+  // setTimeout(() => {
+  chrome.runtime.reload();
+  // }, 5000);
   // reload extension to reload background.
 });
 
 es.addEventListener(
-  'content-scripts-updated',
+  "content-scripts-updated",
   () => {
     logger("received 'content-scripts-updated' event from SSE service.");
-    chrome.tabs.query({}, tabs => {
-      tabs.forEach(tab => {
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach((tab) => {
         chrome.tabs.sendMessage(
           tab.id,
           {
-            from: 'backgroundClient',
-            action: 'reload-yourself',
+            from: "backgroundClient",
+            action: "reload-yourself",
           },
-          res => {
+          (res) => {
             if (chrome.runtime.lastError && !res) return;
 
-            const {from, action} = res;
-            if (from === 'contentScriptClient' && action === 'yes-sir') {
+            const { from, action } = res;
+            if (from === "contentScriptClient" && action === "yes-sir") {
               es.close();
-              logger('extension will reload to update content scripts...');
+              logger("extension will reload to update content scripts...");
               chrome.runtime.reload();
             }
-          }
+          },
         );
       });
     });
   },
-  false
+  false,
 );

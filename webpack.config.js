@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const path = require('path')
-const CopyPlugin = require('copy-webpack-plugin')
-const {CleanWebpackPlugin} = require('clean-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');
+const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
 const alias = {
-  '@src/*': 'src/*',
+  "@src/*": "src/*",
 };
 
-if(process.env.NODE_ENV !== 'development') {
-  process.env.NODE_ENV = 'production'
+if (process.env.NODE_ENV !== "development") {
+  process.env.NODE_ENV = "production";
 }
 
 const options = {
@@ -18,75 +18,87 @@ const options = {
     hot: false,
   },
   entry: {
-    background: path.resolve(__dirname, 'src', 'Background', 'index.ts'),
-    popup: path.resolve(__dirname, 'src','Popup', 'index.ts'),
-    content: path.resolve(__dirname, 'src','ContentScripts' ,'index.ts')
+    background: path.resolve(__dirname, "src", "Background", "index.ts"),
+    popup: path.resolve(__dirname, "src", "Popup", "index.ts"),
+    content: path.resolve(__dirname, "src", "ContentScripts", "index.ts"),
   },
   output: {
-    path: path.join(__dirname, './dist'),
+    path: path.join(__dirname, "./dist"),
     clean: true,
-    filename: '[name].js'
+    filename: "[name].js",
   },
   resolve: {
     alias,
-    extensions: ['.js', '.ts'],
+    extensions: [".js", ".ts"],
   },
   module: {
     rules: [
       {
         test: /\.tsx?$/,
-        loader: 'ts-loader',
-        exclude: /node_modules/
+        loader: "ts-loader",
+        exclude: /node_modules/,
       },
       {
         test: /\.html$/,
-        loader: 'html-loader',
+        loader: "html-loader",
         exclude: /node_modules/,
       },
       {
         test: /\.(css|scss)$/,
         use: [
           {
-            loader: 'style-loader',
+            loader: "style-loader",
           },
           {
-            loader: 'css-loader',
+            loader: "css-loader",
           },
-          {
-            loader: 'sass-loader',
-            options: {
-              sourceMap: true,
-            },
-          },
+          // {
+          //   loader: "sass-loader",
+          //   options: {
+          //     sourceMap: true,
+          //   },
+          // },
         ],
       },
-    ]
+    ],
   },
   plugins: [
     new CleanWebpackPlugin({
       verbose: false,
     }),
     new CopyPlugin({
-      patterns: [{
-        from: './manifest.json',
-        to: path.join(__dirname, 'dist')
-      }]
+      patterns: [
+        {
+          from: "./manifest.json",
+          to: path.join(__dirname, "dist"),
+        },
+      ],
     }),
     new CopyPlugin({
-        patterns: [{
-            from: '.',
-            to: '.',
-            context: 'public',
-        }]
-        })
-    ],
-    infrastructureLogging: {
-      level: 'verbose',
-    },
-}
+      patterns: [
+        {
+          from: ".",
+          to: ".",
+          context: "public",
+        },
+      ],
+    }),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: "./src/ContentScripts/contentStyles.css",
+          to: path.join(__dirname, "dist"),
+        },
+      ],
+    }),
+  ],
+  infrastructureLogging: {
+    level: "verbose",
+  },
+};
 
-if (process.env.NODE_ENV === 'development') {
-  options.devtool = 'cheap-module-source-map';
+if (process.env.NODE_ENV === "development") {
+  options.devtool = "cheap-module-source-map";
 } else {
   options.optimization = {
     minimize: true,
@@ -97,6 +109,5 @@ if (process.env.NODE_ENV === 'development') {
     ],
   };
 }
-console.log(options.devtool, 'devtool')
 
 module.exports = options;
