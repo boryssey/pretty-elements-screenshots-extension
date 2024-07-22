@@ -1,0 +1,23 @@
+.__pretty_screenshots-selected {
+    background-color: pink;
+}
+
+.__pretty_screenshots-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(0,0,0,0.25);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  
+    z-index: 1;
+}
+
+.__pretty_screenshots-overlay canvas {
+    object-fit: contain;
+    max-height: 100%;
+    max-width: 100%;
+}

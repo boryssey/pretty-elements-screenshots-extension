@@ -44,8 +44,15 @@
   },
   "dependencies": {
     "@haverstack/axios-fetch-adapter": "^0.12.0",
-    "@vespaiach/axios-fetch-adapter": "^0.3.1",
     "axios": "^1.6.7",
-    "lodash": "^4.17.21"
+    "html2canvas": "^1.4.1",
+    "lodash": "^4.17.21",
+    "modern-screenshot": "^4.4.39",
+    "zod": "^3.23.8"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "html2canvas@1.4.1": "patches/html2canvas@1.4.1.patch"
+    }
   }
 }
