@@ -3,19 +3,18 @@
   "name": "Pretty HTML Elements Screenshots",
   "version": "1.0",
   "description": "An extension that allows you to make pretty HTML Element screenshots",
-  "permissions": ["storage", "cookies"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": ["http://localhost/*", "https://*/"],
   "action": {
-    "default_popup": "popup.html"
+    "enable_screenshot_overlay": "Enable Screenshot Overlay"
   },
   "background": {
     "service_worker": "background.js"
   },
-
-  "content_scripts": [
+  "web_accessible_resources": [
     {
-      "matches": ["http://localhost/*"],
-      "js": ["content.js"]
+      "resources": ["/contentStyles.css"],
+      "matches": ["http://localhost/*", "<all_urls>"]
     }
   ]
 }

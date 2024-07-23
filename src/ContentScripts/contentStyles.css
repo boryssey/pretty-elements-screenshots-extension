@@ -1,5 +1,6 @@
+
 .__pretty_screenshots-selected {
-    background-color: pink;
+    background-color: rgb(167,197,230);
 }
 
 .__pretty_screenshots-overlay {
@@ -12,12 +13,55 @@
     display: flex;
     justify-content: center;
     align-items: center;
-  
-    z-index: 1;
 }
 
-.__pretty_screenshots-overlay canvas {
+.__pretty_screenshots-overlay canvas, .__pretty_screenshots-overlay img {
     object-fit: contain;
-    max-height: 100%;
-    max-width: 100%;
+    max-height: calc(100% - 40px);
+    max-width: calc(100% - 40px);
+}
+
+.__pretty_screenshots-toolbar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translate(-50%, 0);
+    background-color: #272829;
+    padding: 10px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    color: #575756;
+}
+
+.__pretty_screenshots-toolbar .__pretty_screenshots-toolbar-button {
+    background-color: transparent;
+    border: 1px solid #575756;
+    color: rgb(156, 156, 156);
+    font-size: 20px;
+    padding: 5px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.__pretty_screenshots-control-panel {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translate(0, -50%);
+    background-color: #272829;
+    padding: 10px;
+    font-size: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #575756;
+}
+
+
+.__pretty_screenshots-control-panel > div {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
 }

@@ -1,1 +1,1 @@
-console.log('popup opened')
+console.log("popup opened");

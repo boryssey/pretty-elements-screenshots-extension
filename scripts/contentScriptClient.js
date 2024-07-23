@@ -4,6 +4,7 @@ const logger = (msg) => {
 
 logger("content script client up.");
 
+//TODO: Change to polyfill
 chrome.runtime.onMessage.addListener((request, _sender, sendResp) => {
   const shouldReload =
     request.from === "backgroundClient" && request.action === "reload-yourself";

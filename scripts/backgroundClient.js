@@ -36,6 +36,8 @@ es.addEventListener("background-updated", () => {
   logger("received 'background-updated' event from SSE service.");
   logger("extension will reload to reload background...");
   // setTimeout(() => {
+
+  //TODO: Change to polyfill
   chrome.runtime.reload();
   // }, 5000);
   // reload extension to reload background.
@@ -45,6 +47,7 @@ es.addEventListener(
   "content-scripts-updated",
   () => {
     logger("received 'content-scripts-updated' event from SSE service.");
+    //TODO: Change to polyfill
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
         chrome.tabs.sendMessage(

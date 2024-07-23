@@ -1,13 +1,14 @@
-import { debounce } from "lodash";
 import { createElementWithClassNames } from "../utils/helpers";
 import "./contentStyles.css";
-import { domToCanvas } from "modern-screenshot";
-import { sendFetchImageRequest } from "../utils/makeRequest";
 
-const CLASSNAME_PREFIX = "__pretty_screenshots";
+import browser from "webextension-polyfill";
+import { clearAllSelections, clearMode, switchScreenshotMode } from "./modes";
+import { sendGetTabIdRequest, sendScriptFinishedEvent } from "../utils/events";
 
-const TOGGLED_CLASSNAME = `${CLASSNAME_PREFIX}-selected`;
-const TOGGLED_SELECTOR = `.${TOGGLED_CLASSNAME}`;
+export const CLASSNAME_PREFIX = "__pretty_screenshots";
+
+export const TOGGLED_CLASSNAME = `${CLASSNAME_PREFIX}-selected`;
+export const TOGGLED_SELECTOR = `.${TOGGLED_CLASSNAME}`;
 
 const logger = (args?: unknown, ...optionalParams: unknown[]) => {
   console.log("[CSC]:", args, optionalParams);
@@ -15,106 +16,104 @@ const logger = (args?: unknown, ...optionalParams: unknown[]) => {
 
 logger("content script called");
 
-const clearAllSelections = () => {
-  const toggledElement = document.querySelectorAll(TOGGLED_SELECTOR);
-  if (toggledElement.length) {
-    toggledElement.forEach((element) => {
-      element.classList.remove(TOGGLED_CLASSNAME);
-    });
-  }
+let tabId: number;
+
+sendGetTabIdRequest()
+  .then((id) => {
+    logger("Got tab id", id);
+    if (!id || typeof id !== "number") return;
+    tabId = id;
+  })
+  .catch((error) => console.error("Error getting tab id", error));
+
+const createShadowRoot = () => {
+  const shadowHost = document.createElement("div");
+  shadowHost.id = `${CLASSNAME_PREFIX}-container`;
+  document.body.appendChild(shadowHost);
+  const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+  const url = browser.runtime.getURL("contentStyles.css");
+  shadowRoot.innerHTML = `
+   <style>
+    @import url("${url}");
+    </style>
+  `;
+  return { shadowHost, shadowRoot };
 };
 
-const handleMouseMoveEvent = debounce((e: MouseEvent) => {
-  const elementAtPoint = document.elementFromPoint(e.clientX, e.clientY);
-  if (!(elementAtPoint instanceof HTMLElement)) {
+const { shadowHost, shadowRoot } = createShadowRoot();
+
+export const getShadowHost = () => {
+  return { shadowHost, shadowRoot };
+};
+
+const buildScreenshotModeToolbar = () => {
+  if (!shadowRoot) {
     return;
   }
 
-  if (!elementAtPoint.classList.contains(TOGGLED_CLASSNAME)) {
-    clearAllSelections();
-    elementAtPoint.classList.add(TOGGLED_CLASSNAME);
-  }
-}, 10);
+  const createButton = (text: string, handler: (e: MouseEvent) => void) => {
+    const button = createElementWithClassNames(
+      "button",
+      `${CLASSNAME_PREFIX}-toolbar-button`,
+    );
+    button.textContent = text;
+    button.addEventListener("click", handler);
+    return button;
+  };
 
-const transparentValues = ["rgba(0, 0, 0, 0)", "transparent"];
-
-const getElementBackgroundColor = (element: HTMLElement) => {
-  const backgroundColor = window.getComputedStyle(element).backgroundColor;
-
-  if (!transparentValues.includes(backgroundColor)) {
-    return backgroundColor;
-  }
-  if (!element.parentElement) {
-    return "white";
-  }
-  return getElementBackgroundColor(element.parentElement);
+  const toolbar = shadowRoot.appendChild(
+    createElementWithClassNames("div", `${CLASSNAME_PREFIX}-toolbar`),
+  );
+  toolbar.appendChild(
+    createButton("Element", () => switchScreenshotMode("element")),
+  );
+  toolbar.appendChild(createButton("Page", () => switchScreenshotMode("page")));
+  toolbar.appendChild(createButton("Area", () => switchScreenshotMode("area")));
+  toolbar.appendChild(createButton("Cancel", () => close()));
 };
 
-const handleElementClick = (e: MouseEvent) => {
-  const asyncHandler = async () => {
-    if (
-      e.target instanceof HTMLElement &&
-      (e.target.id === "pretty-screenshots-overlay" ||
-        e.target.classList.contains(`${CLASSNAME_PREFIX}-overlay`) ||
-        e.target.tagName === "CANVAS")
-    ) {
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    const selectedElement = document.querySelector(TOGGLED_SELECTOR);
-    if (!selectedElement || !(selectedElement instanceof HTMLElement)) {
-      return;
-    }
-    selectedElement.classList.remove(TOGGLED_CLASSNAME);
-    const screenshotCanvas = await domToCanvas(selectedElement, {
-      backgroundColor: getElementBackgroundColor(selectedElement),
-      fetchFn: fetchImage,
-      scale: 2,
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = screenshotCanvas.width + 40;
-    canvas.height = screenshotCanvas.height + 40;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return;
-    }
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
-    ctx.fill();
-    ctx.drawImage(screenshotCanvas, 20, 20);
-    document.removeEventListener("mousemove", handleMouseMoveEvent);
-    document.removeEventListener("click", handleElementClick, {
+buildScreenshotModeToolbar();
+
+switchScreenshotMode("element");
+
+export const close = () => {
+  clearAllSelections();
+  clearMode();
+  shadowHost.remove();
+  tabId &&
+    sendScriptFinishedEvent(tabId)
+      .then(() => logger("script closed"))
+      .catch((error) => console.error("Error sending close event", error));
+};
+
+const handleEscapeKey = (e: KeyboardEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.key === "Escape") {
+    close();
+    document.removeEventListener("keydown", handleEscapeKey, {
       capture: true,
     });
-    buildScreenshotOverlay(canvas);
-    const link = document.createElement("a");
-    link.download = "filename.png";
-    link.href = canvas.toDataURL();
-    link.click();
-  };
-  asyncHandler().catch((error) => console.error(error));
+  }
 };
 
-document.addEventListener("mousemove", handleMouseMoveEvent);
-document.addEventListener("click", handleElementClick, {
+document.addEventListener("keydown", handleEscapeKey, {
   capture: true,
 });
 
-const buildScreenshotOverlay = (screenshot: HTMLCanvasElement) => {
-  const overlay = document.body.appendChild(
-    createElementWithClassNames("div", `${CLASSNAME_PREFIX}-overlay`),
-  );
-  overlay.id = "pretty-screenshots-overlay";
-  overlay.appendChild(screenshot);
-  overlay.addEventListener("click", () => {
-    document.body.removeChild(overlay);
-  });
-};
+/*
+TODO:
 
-const fetchImage = async (url: string): Promise<string | false> => {
-  return await sendFetchImageRequest({
-    url,
-  });
-};
+Implement full page, select area mode.
+Right bar with options for created screenshot:border size, border color, shadow size, shadow color. 
+Save options: name, format, quality, download button.
+Request persmission for CORS 
+
+DONE:
+lower bar with button for whole page, select element, (select area).  DONE
+Invoke script on click on extension icon. DONE
+clean up on cancel or ESC button DONE
+Copy as image. DONE
+Right bar with options for created screenshot: padding size DONE, padding color DONE, border-radius DONE, 
+
+*/

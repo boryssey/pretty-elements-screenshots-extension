@@ -22,11 +22,9 @@ export const isFetchImageRequest = (req: unknown): req is FetchImageRequest => {
   if (typeof req !== "object" || req === null) return false;
   if ("eventName" in req && req.eventName !== "fetchImage") return false;
   if (!("payload" in req) || !req.payload || typeof req.payload !== "object") {
-    console.log("no payload");
     return false;
   }
   if (!("url" in req.payload) || typeof req.payload.url !== "string") {
-    console.log("no url");
     return false;
   }
   return true;
@@ -35,7 +33,6 @@ export const isFetchImageRequest = (req: unknown): req is FetchImageRequest => {
 export const fetchImageHandler = async (
   request: FetchImageRequest,
 ): Promise<string> => {
-  //   if (!isFetchRequest(request)) throw new Error("Invalid request");
   return fetch(request.payload.url)
     .then((response) => response.blob())
     .then(
@@ -56,11 +53,59 @@ export const sendFetchImageRequest = async (
     eventName: "fetchImage",
     payload: props,
   });
-  console.log(res, "res");
-  // const res = await fetch(props.url, {
-  //   method: props.method.toUpperCase(),
-  //   body: JSON.stringify(props.data),
-  // })
-  // if (!isAxiosResponse(res)) throw new RequestError("Invalid response", res);
+
   return res as string;
+};
+
+interface ScriptFinishedEvent {
+  eventName: "scriptClosed";
+  payload: {
+    tabId: number;
+  };
+}
+
+export const isScriptFinishedEvent = (
+  req: unknown,
+): req is ScriptFinishedEvent => {
+  if (typeof req !== "object" || req === null) {
+    return false;
+  }
+  if ("eventName" in req && req.eventName !== "scriptClosed") {
+    return false;
+  }
+  if (!("payload" in req) || !req.payload || typeof req.payload !== "object") {
+    return false;
+  }
+  if (!("tabId" in req.payload) || typeof req.payload.tabId !== "number") {
+    return false;
+  }
+
+  return true;
+};
+
+export const sendScriptFinishedEvent = async (tabId: number) => {
+  return browser.runtime.sendMessage({
+    eventName: "scriptClosed",
+    payload: { tabId },
+  });
+};
+
+interface GetTabIdRequest {
+  eventName: "getTabId";
+}
+
+export const isGetTabIdRequest = (req: unknown): req is GetTabIdRequest => {
+  if (typeof req !== "object" || req === null) {
+    return false;
+  }
+  if ("eventName" in req && req.eventName !== "getTabId") {
+    return false;
+  }
+  return true;
+};
+
+export const sendGetTabIdRequest = async () => {
+  return browser.runtime.sendMessage({
+    eventName: "getTabId",
+  });
 };

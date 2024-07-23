@@ -1,4 +1,9 @@
-import { fetchImageHandler, isFetchImageRequest } from "../utils/makeRequest";
+import {
+  fetchImageHandler,
+  isFetchImageRequest,
+  isGetTabIdRequest,
+  isScriptFinishedEvent,
+} from "../utils/events";
 import browser from "webextension-polyfill";
 
 const allowedMethods = [
@@ -23,39 +28,64 @@ export type AxiosRequestMessage = Message<{
   axiosConfig?: unknown;
 }>;
 
-// export const wrapAsyncFunction =
-//   (listener: (request: Message) => Promise<unknown>) =>
-//   (
-//     request: unknown,
-//     _sender: browser.Runtime.MessageSender,
-//     sendResponse: (response?: unknown) => void,
-//   ) => {
-//     // the listener(...) might return a non-promise result (not an async function), so we wrap it with Promise.resolve()
-//     Promise.resolve(listener(request))
-//       .then((data) => sendResponse({ success: true, data }))
-//       .catch((error: unknown) => {
-//         sendResponse({
-//           success: false,
-//           error: {
-//             message: error.message,
-//             status: error.response?.status,
-//             response: error.response?.data,
-//           },
-//         });
-//       });
-//     return true as const; // return true to indicate you want to send a response asynchronously
-//   };
-
 browser.runtime.onMessage.addListener(
   async (request: unknown, _sender: browser.Runtime.MessageSender) => {
-    console.log(request, "request");
     if (isFetchImageRequest(request)) {
-      console.log("fetchImageHandler");
       return fetchImageHandler(request);
+    } else if (isScriptFinishedEvent(request)) {
+      const { tabId } = request.payload;
+      runningScripts[tabId] = false;
+      console.log({ runningScripts }, "script finished");
+      return Promise.resolve();
+    } else if (isGetTabIdRequest(request)) {
+      return Promise.resolve(_sender.tab?.id);
     } else {
       return Promise.reject(new Error("Invalid request"));
     }
   },
 );
+
+const runningScripts: Record<number, boolean> = {};
+
+const executeScriptOnTabId = (tabId: number) => {
+  if (runningScripts[tabId]) {
+    console.warn("Script already running on tab", tabId);
+    return;
+  }
+  browser.scripting
+    .executeScript({
+      target: { tabId: tabId },
+      files: ["content.js"],
+    })
+    .then(() => {
+      runningScripts[tabId] = true;
+      console.log({ runningScripts }, "executed script");
+    })
+    .catch((err) => {
+      console.error("Error executing script", err);
+    });
+};
+
+browser.contextMenus.create({
+  contexts: ["page"],
+  title: "Take screenshot",
+  id: "take-screenshot",
+});
+
+browser.contextMenus.onClicked.addListener((_, tab) => {
+  const tabId = tab?.id;
+  if (!tabId) {
+    return;
+  }
+  executeScriptOnTabId(tabId);
+});
+
+browser.action.onClicked.addListener((tab) => {
+  const tabId = tab.id;
+  if (!tabId) {
+    return;
+  }
+  executeScriptOnTabId(tabId);
+});
 
 console.log("background script running");
