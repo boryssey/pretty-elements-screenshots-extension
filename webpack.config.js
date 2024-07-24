@@ -48,6 +48,10 @@ const options = {
         use: [
           {
             loader: "style-loader",
+            options: {
+              injectType: "lazyStyleTag",
+              insert: require.resolve("./insertStyle.js"),
+            },
           },
           {
             loader: "css-loader",
@@ -80,14 +84,6 @@ const options = {
           from: ".",
           to: ".",
           context: "public",
-        },
-      ],
-    }),
-    new CopyPlugin({
-      patterns: [
-        {
-          from: "./src/ContentScripts/contentStyles.css",
-          to: path.join(__dirname, "dist"),
         },
       ],
     }),

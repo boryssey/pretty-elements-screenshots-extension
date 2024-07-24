@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Pretty HTML Elements Screenshots",
+  "name": "Pretty Screenshots - Capture any Area, Element, or Full Page easily",
   "version": "1.0",
   "description": "An extension that allows you to make pretty HTML Element screenshots",
   "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
@@ -10,11 +10,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["/contentStyles.css"],
-      "matches": ["http://localhost/*", "<all_urls>"]
-    }
-  ]
+  }
 }

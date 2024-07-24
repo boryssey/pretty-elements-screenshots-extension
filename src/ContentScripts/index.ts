@@ -1,7 +1,10 @@
 import { createElementWithClassNames } from "../utils/helpers";
-import "./contentStyles.css";
+//@ts-expect-error style-loader
+import shadowDomStyle from "./styles/shadowDom.css";
+//@ts-expect-error style-loader
+import globalStyle from "./styles/global.css";
 
-import browser from "webextension-polyfill";
+// import browser from "webextension-polyfill";
 import { clearAllSelections, clearMode, switchScreenshotMode } from "./modes";
 import { sendGetTabIdRequest, sendScriptFinishedEvent } from "../utils/events";
 
@@ -31,12 +34,11 @@ const createShadowRoot = () => {
   shadowHost.id = `${CLASSNAME_PREFIX}-container`;
   document.body.appendChild(shadowHost);
   const shadowRoot = shadowHost.attachShadow({ mode: "open" });
-  const url = browser.runtime.getURL("contentStyles.css");
-  shadowRoot.innerHTML = `
-   <style>
-    @import url("${url}");
-    </style>
-  `;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  shadowDomStyle.use({ target: shadowRoot });
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  globalStyle.use({ target: document.head });
+
   return { shadowHost, shadowRoot };
 };
 
