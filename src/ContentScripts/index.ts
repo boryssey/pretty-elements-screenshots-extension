@@ -1,12 +1,25 @@
-import { createElementWithClassNames } from "../utils/helpers";
+import {
+  createElementWithAttributes,
+  createElementWithClassNames,
+} from "@src/utils/helpers";
 //@ts-expect-error style-loader
 import shadowDomStyle from "./styles/shadowDom.css";
 //@ts-expect-error style-loader
 import globalStyle from "./styles/global.css";
 
 // import browser from "webextension-polyfill";
-import { clearAllSelections, clearMode, switchScreenshotMode } from "./modes";
-import { sendGetTabIdRequest, sendScriptFinishedEvent } from "../utils/events";
+import {
+  capturePage,
+  clearAllSelections,
+  clearMode,
+  switchScreenshotMode,
+} from "./modes";
+import {
+  sendGetTabIdRequest,
+  sendScriptFinishedEvent,
+} from "@src/utils/events";
+import { StorageValue } from "@src/utils/storage";
+import { ImageType, imageTypes } from "@src/utils/constants";
 
 export const CLASSNAME_PREFIX = "__pretty_screenshots";
 
@@ -30,6 +43,16 @@ sendGetTabIdRequest()
   .catch((error) => console.error("Error getting tab id", error));
 
 const createShadowRoot = () => {
+  const exisitingShadowHost = document.getElementById(
+    `${CLASSNAME_PREFIX}-container`,
+  );
+
+  if (exisitingShadowHost?.shadowRoot) {
+    return {
+      shadowHost: exisitingShadowHost,
+      shadowRoot: exisitingShadowHost.shadowRoot,
+    };
+  }
   const shadowHost = document.createElement("div");
   shadowHost.id = `${CLASSNAME_PREFIX}-container`;
   document.body.appendChild(shadowHost);
@@ -42,9 +65,21 @@ const createShadowRoot = () => {
   return { shadowHost, shadowRoot };
 };
 
-const { shadowHost, shadowRoot } = createShadowRoot();
+let shadowHost: HTMLElement | undefined, shadowRoot: ShadowRoot | undefined;
+
+const downloadStorage = new StorageValue<ImageType>(
+  "downloadOption",
+  imageTypes[0],
+);
+const autoDownloadOptionStorage = new StorageValue<boolean>(
+  "autoDownloadOption",
+  true,
+);
 
 export const getShadowHost = () => {
+  if (!shadowHost || !shadowRoot) {
+    throw new Error("Wrong init context");
+  }
   return { shadowHost, shadowRoot };
 };
 
@@ -69,19 +104,49 @@ const buildScreenshotModeToolbar = () => {
   toolbar.appendChild(
     createButton("Element", () => switchScreenshotMode("element")),
   );
-  toolbar.appendChild(createButton("Page", () => switchScreenshotMode("page")));
+  toolbar.appendChild(
+    createButton(
+      "Page",
+      () => void capturePage().catch((err) => console.error(err)),
+    ),
+  );
   toolbar.appendChild(createButton("Area", () => switchScreenshotMode("area")));
-  toolbar.appendChild(createButton("Cancel", () => close()));
+  toolbar.appendChild(createButton("Cancel", () => closeScreenshotTool()));
+  const autodownloadCheckbox = createElementWithAttributes("input", {
+    type: "checkbox",
+    id: "autodownload-checkbox",
+  }) as HTMLInputElement;
+  const autodownloadLabel = toolbar.appendChild(
+    createElementWithClassNames("label", "autodownload-label"),
+  );
+  autodownloadLabel.textContent = "Auto-download";
+  autodownloadLabel.appendChild(autodownloadCheckbox);
+  downloadStorage
+    .get()
+    .then(() => {
+      autodownloadCheckbox.checked = autoDownloadOptionStorage.value ?? true;
+    })
+    .catch((error) =>
+      console.error("Error getting autodownload option", error),
+    );
+  autodownloadCheckbox.addEventListener("change", (e) => {
+    autoDownloadOptionStorage
+      .set((e.target as HTMLInputElement).checked)
+      .catch((err) => {
+        console.error("Error setting autodownload option", err);
+      });
+  });
 };
 
-buildScreenshotModeToolbar();
-
-switchScreenshotMode("element");
-
-export const close = () => {
+export const closeScreenshotTool = () => {
   clearAllSelections();
   clearMode();
+  const { shadowHost } = getShadowHost();
   shadowHost.remove();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  globalStyle.unuse();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  shadowDomStyle.unuse();
   tabId &&
     sendScriptFinishedEvent(tabId)
       .then(() => logger("script closed"))
@@ -89,20 +154,36 @@ export const close = () => {
 };
 
 const handleEscapeKey = (e: KeyboardEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
   if (e.key === "Escape") {
-    close();
+    e.preventDefault();
+    e.stopPropagation();
+    closeScreenshotTool();
     document.removeEventListener("keydown", handleEscapeKey, {
       capture: true,
     });
   }
 };
 
-document.addEventListener("keydown", handleEscapeKey, {
-  capture: true,
-});
+const initScript = () => {
+  const exisitingShadowHost = document.getElementById(
+    `${CLASSNAME_PREFIX}-container`,
+  );
 
+  if (exisitingShadowHost?.shadowRoot) {
+    return;
+  }
+  ({ shadowHost, shadowRoot } = createShadowRoot());
+  buildScreenshotModeToolbar();
+  capturePage().catch((err) => console.error(err));
+  // switchScreenshotMode("element");
+
+  document.addEventListener("keydown", handleEscapeKey, {
+    capture: true,
+  });
+
+  return createShadowRoot;
+};
+initScript();
 /*
 TODO:
 

@@ -5,16 +5,22 @@
     left: 0;
     height: 100%;
     width: 100%;
-    background-color: rgba(0,0,0,0.25);
+    background-color: rgba(0,0,0,0.5);
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    z-index: 99999;
+}
+
+.__pretty_screenshots-overlay::selection {
+    background-color: initial;
 }
 
 .__pretty_screenshots-overlay canvas, .__pretty_screenshots-overlay img {
     object-fit: contain;
-    max-height: calc(100% - 40px);
-    max-width: calc(100% - 40px);
+    max-height: calc(100% - 80px);
+    max-width: calc(100% - 80px);
 }
 
 .__pretty_screenshots-toolbar {
@@ -27,13 +33,14 @@
     font-size: 20px;
     display: flex;
     align-items: center;
-    color: #575756;
+    color: white;
+    z-index: 100000;
 }
 
 .__pretty_screenshots-toolbar .__pretty_screenshots-toolbar-button {
     background-color: transparent;
-    border: 1px solid #575756;
-    color: rgb(156, 156, 156);
+    border: 1px solid white;
+    color: white;
     font-size: 20px;
     padding: 5px;
     margin: 5px;
@@ -42,22 +49,60 @@
 
 .__pretty_screenshots-control-panel {
     position: fixed;
-    top: 50%;
+    bottom: 40px;
     right: 20px;
-    transform: translate(0, -50%);
+    /* transform: translate(0, -50%); */
     background-color: #272829;
     padding: 10px;
     font-size: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: #575756;
+    gap: 8px;
+    /* color: #575756; */
+    color: #ebebeb;
 }
 
 
 .__pretty_screenshots-control-panel > div {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: grid;
+    grid-template: "label label" "input output" / min-content auto;
     align-items: center;
+    width: 100%;
+    justify-content: space-around;
+    column-gap: 4px;
+}
+
+.__pretty_screenshots-control-panel > div > label {
+    grid-area: label;
+}
+
+.__pretty_screenshots-control-panel > div > output {
+    font-size: 18px;
+}
+
+.__pretty_screenshots-selection-overlay {
+    position: fixed;
+    z-index: 99999;
+    background-color: rgba(174, 198, 246, 0.75);
+    pointer-events: none;
+    /* background-color: rgba(211, 226, 243, 0.5); */
+}
+
+.__pretty_screenshots-info-message {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    /* align-self: flex-start; */
+    padding: 5px 10px;
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 8px;
+    color: black;
+}
+
+.__pretty_screenshots-info-message > a {
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
 }

@@ -5,7 +5,7 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 
 const alias = {
-  "@src/*": "src/*",
+  "@src": path.resolve(__dirname, "src"),
 };
 
 if (process.env.NODE_ENV !== "development") {
@@ -20,6 +20,7 @@ const options = {
   entry: {
     background: path.resolve(__dirname, "src", "Background", "index.ts"),
     popup: path.resolve(__dirname, "src", "Popup", "index.ts"),
+    options: path.resolve(__dirname, "src", "Options", "index.ts"),
     content: path.resolve(__dirname, "src", "ContentScripts", "index.ts"),
   },
   output: {
@@ -29,12 +30,12 @@ const options = {
   },
   resolve: {
     alias,
-    extensions: [".js", ".ts"],
+    extensions: ["", ".js", ".ts"],
   },
   module: {
     rules: [
       {
-        test: /\.tsx?$/,
+        test: /\.ts?$/,
         loader: "ts-loader",
         exclude: /node_modules/,
       },

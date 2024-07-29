@@ -1,4 +1,5 @@
-import browser from "webextension-polyfill";
+import browser, { Permissions } from "webextension-polyfill";
+import { baseFetch } from "./fetch";
 
 interface FetchImageRequestPayload {
   url: string;
@@ -18,9 +19,20 @@ interface FetchImageRequest {
   payload: FetchImageRequestPayload;
 }
 
+function hasEventName<T extends string>(
+  req: unknown,
+  eventName: T,
+): req is { eventName: T } {
+  return (
+    typeof req === "object" &&
+    req !== null &&
+    "eventName" in req &&
+    req.eventName === eventName
+  );
+}
+
 export const isFetchImageRequest = (req: unknown): req is FetchImageRequest => {
-  if (typeof req !== "object" || req === null) return false;
-  if ("eventName" in req && req.eventName !== "fetchImage") return false;
+  if (!hasEventName(req, "makeRequest")) return false;
   if (!("payload" in req) || !req.payload || typeof req.payload !== "object") {
     return false;
   }
@@ -30,21 +42,19 @@ export const isFetchImageRequest = (req: unknown): req is FetchImageRequest => {
   return true;
 };
 
+export const defaultFetchInit: RequestInit = {
+  cache: "force-cache",
+  headers: {
+    accept: `${["image/webp", "image/svg+xml", "image/*", "*/*"].join(
+      ",",
+    )};q=0.8`,
+  },
+};
+
 export const fetchImageHandler = async (
   request: FetchImageRequest,
 ): Promise<string> => {
-  return fetch(request.payload.url)
-    .then((response) => response.blob())
-    .then(
-      (blob) =>
-        new Promise((callback) => {
-          const reader = new FileReader();
-          reader.onload = function () {
-            callback(this.result as string);
-          };
-          reader.readAsDataURL(blob);
-        }),
-    );
+  return baseFetch({ url: request.payload.url, ...defaultFetchInit });
 };
 export const sendFetchImageRequest = async (
   props: FetchImageRequestPayload,
@@ -67,12 +77,7 @@ interface ScriptFinishedEvent {
 export const isScriptFinishedEvent = (
   req: unknown,
 ): req is ScriptFinishedEvent => {
-  if (typeof req !== "object" || req === null) {
-    return false;
-  }
-  if ("eventName" in req && req.eventName !== "scriptClosed") {
-    return false;
-  }
+  if (!hasEventName(req, "scriptClosed")) return false;
   if (!("payload" in req) || !req.payload || typeof req.payload !== "object") {
     return false;
   }
@@ -95,12 +100,7 @@ interface GetTabIdRequest {
 }
 
 export const isGetTabIdRequest = (req: unknown): req is GetTabIdRequest => {
-  if (typeof req !== "object" || req === null) {
-    return false;
-  }
-  if ("eventName" in req && req.eventName !== "getTabId") {
-    return false;
-  }
+  if (!hasEventName(req, "getTabId")) return false;
   return true;
 };
 
@@ -108,4 +108,112 @@ export const sendGetTabIdRequest = async () => {
   return browser.runtime.sendMessage({
     eventName: "getTabId",
   });
+};
+
+interface CheckPermissionsEvent {
+  eventName: "checkPermissions";
+  payload: {
+    origins: string[];
+  };
+}
+
+export const isCheckPermissionsEvent = (
+  request: unknown,
+): request is CheckPermissionsEvent => {
+  if (!hasEventName(request, "checkPermissions")) return false;
+  if (
+    !("payload" in request) ||
+    !request.payload ||
+    typeof request.payload !== "object"
+  ) {
+    return false;
+  }
+  if (
+    !("origins" in request.payload) ||
+    !Array.isArray(request.payload.origins)
+  ) {
+    return false;
+  }
+  return true;
+};
+
+export const sendCheckPermissionsEvent = async (
+  props: CheckPermissionsEvent["payload"],
+): Promise<boolean> => {
+  const res: unknown = await browser.runtime.sendMessage({
+    eventName: "checkPermissions",
+    payload: props,
+  });
+
+  return res as boolean;
+};
+
+interface GetPermissionsRequest {
+  eventName: "getPermissions";
+  payload: Permissions.Permissions;
+}
+
+export const isGetPermissionsRequest = (
+  request: unknown,
+): request is GetPermissionsRequest => {
+  if (!hasEventName(request, "getPermissions")) return false;
+  if (
+    !("payload" in request) ||
+    !request.payload ||
+    typeof request.payload !== "object"
+  ) {
+    return false;
+  }
+  if (
+    (!("origins" in request.payload) ||
+      !Array.isArray(request.payload.origins)) &&
+    (!("permissions" in request.payload) ||
+      !Array.isArray(request.payload.permissions))
+  ) {
+    return false;
+  }
+  return true;
+};
+
+export const sendGetPermissionsRequest = async (
+  props: GetPermissionsRequest["payload"],
+): Promise<boolean> => {
+  const res: unknown = await browser.runtime.sendMessage({
+    eventName: "getPermissions",
+    payload: props,
+  });
+
+  return res as boolean;
+};
+
+interface ShowOptionsRequest {
+  eventName: "showOptions";
+}
+
+export const isShowOptionsRequest = (
+  request: unknown,
+): request is ShowOptionsRequest => {
+  if (!hasEventName(request, "showOptions")) return false;
+  return true;
+};
+
+export const sendShowOptionsRequest = async () => {
+  return browser.runtime.sendMessage({
+    eventName: "showOptions",
+  });
+};
+
+interface CaptureTabEvent {
+  eventName: "captureTab";
+}
+
+export const isCaptureTabEvent = (req: unknown): req is CaptureTabEvent => {
+  if (!hasEventName(req, "captureTab")) return false;
+  return true;
+};
+
+export const sendCaptureTabEvent = async (): Promise<string> => {
+  return browser.runtime.sendMessage({
+    eventName: "captureTab",
+  }) as Promise<string>;
 };

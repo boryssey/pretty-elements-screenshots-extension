@@ -1,9 +1,14 @@
 import {
   fetchImageHandler,
+  isCaptureTabEvent,
+  isCheckPermissionsEvent,
   isFetchImageRequest,
+  isGetPermissionsRequest,
   isGetTabIdRequest,
   isScriptFinishedEvent,
-} from "../utils/events";
+  isShowOptionsRequest,
+} from "@src/utils/events";
+import { addStorageValueListener } from "@src/utils/storage";
 import browser from "webextension-polyfill";
 
 const allowedMethods = [
@@ -30,17 +35,35 @@ export type AxiosRequestMessage = Message<{
 
 browser.runtime.onMessage.addListener(
   async (request: unknown, _sender: browser.Runtime.MessageSender) => {
-    if (isFetchImageRequest(request)) {
-      return fetchImageHandler(request);
-    } else if (isScriptFinishedEvent(request)) {
-      const { tabId } = request.payload;
-      runningScripts[tabId] = false;
-      console.log({ runningScripts }, "script finished");
-      return Promise.resolve();
-    } else if (isGetTabIdRequest(request)) {
-      return Promise.resolve(_sender.tab?.id);
-    } else {
-      return Promise.reject(new Error("Invalid request"));
+    console.log({ request }, "background message");
+    switch (true) {
+      case isFetchImageRequest(request): {
+        return fetchImageHandler(request);
+      }
+      case isScriptFinishedEvent(request): {
+        const { tabId } = request.payload;
+        runningScripts[tabId] = false;
+        console.log({ runningScripts }, "script finished");
+        return Promise.resolve();
+      }
+      case isGetTabIdRequest(request): {
+        return Promise.resolve(_sender.tab?.id);
+      }
+      case isCheckPermissionsEvent(request): {
+        return browser.permissions.contains(request.payload);
+      }
+      case isGetPermissionsRequest(request): {
+        return browser.permissions.request(request.payload);
+      }
+      case isShowOptionsRequest(request): {
+        return browser.runtime.openOptionsPage();
+      }
+      case isCaptureTabEvent(request): {
+        return browser.tabs.captureVisibleTab();
+      }
+      default: {
+        return Promise.reject(new Error("Invalid request"));
+      }
     }
   },
 );
@@ -58,7 +81,7 @@ const executeScriptOnTabId = (tabId: number) => {
       files: ["content.js"],
     })
     .then(() => {
-      runningScripts[tabId] = true;
+      // runningScripts[tabId] = true;
       console.log({ runningScripts }, "executed script");
     })
     .catch((err) => {
@@ -89,3 +112,13 @@ browser.action.onClicked.addListener((tab) => {
 });
 
 console.log("background script running");
+
+addStorageValueListener("frameOptions.borderRadius", (newValue) => {
+  console.log(newValue, "borderRadius");
+});
+addStorageValueListener("frameOptions.padding", (newValue) => {
+  console.log(newValue, "padding");
+});
+addStorageValueListener("frameOptions.frameColor", (newValue) => {
+  console.log(newValue, "color");
+});
